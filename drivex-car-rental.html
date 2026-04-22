@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DriveX — Car Rental</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --accent: #6EE7B7;
+    --accent2: #34D399;
+    --glass-bg: rgba(255,255,255,0.04);
+    --glass-border: rgba(255,255,255,0.08);
+    --glass-hover: rgba(255,255,255,0.07);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: #080C10;
+    color: #E2E8F0;
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  h1,h2,h3,h4,.font-display { font-family: 'Syne', sans-serif; }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  /* Ambient glow blobs */
+  .blob {
+    position: fixed; border-radius: 50%;
+    filter: blur(120px); pointer-events: none; z-index: 0;
+  }
+  .blob-1 { width: 600px; height: 600px; background: rgba(52,211,153,0.06); top: -200px; right: -100px; }
+  .blob-2 { width: 500px; height: 500px; background: rgba(99,102,241,0.05); bottom: 100px; left: -150px; }
+
+  /* Glass card */
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .glass-hover:hover {
+    background: var(--glass-hover);
+    border-color: rgba(110,231,183,0.2);
+    transform: translateY(-2px);
+    transition: all 0.25s ease;
+  }
+
+  /* Nav */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(8,12,16,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border);
+  }
+
+  /* Accent button */
+  .btn-accent {
+    background: linear-gradient(135deg, #34D399, #059669);
+    color: #022c22;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: all 0.2s;
+  }
+  .btn-accent:hover { filter: brightness(1.1); transform: translateY(-1px); }
+  .btn-accent:active { transform: scale(0.98); }
+
+  /* Ghost button */
+  .btn-ghost {
+    border: 1px solid var(--glass-border);
+    background: transparent;
+    color: #94A3B8;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); background: rgba(110,231,183,0.05); }
+
+  /* Input */
+  .inp {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #E2E8F0;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .inp:focus { border-color: var(--accent); }
+  .inp::placeholder { color: #475569; }
+
+  /* Car card */
+  .car-card {
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    position: relative; overflow: hidden;
+  }
+  .car-card::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(8,12,16,0.85) 0%, transparent 55%);
+    pointer-events: none;
+  }
+  .car-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(110,231,183,0.35);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 30px rgba(52,211,153,0.08);
+  }
+  .car-card img {
+    width: 100%; height: 210px; object-fit: cover;
+    transition: transform 0.5s ease;
+    display: block;
+  }
+  .car-card:hover img { transform: scale(1.04); }
+
+  /* Badge */
+  .badge {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 4px;
+  }
+  .badge-green { background: rgba(52,211,153,0.15); color: #34D399; border: 1px solid rgba(52,211,153,0.2); }
+  .badge-blue  { background: rgba(99,102,241,0.15);  color: #818CF8; border: 1px solid rgba(99,102,241,0.2); }
+  .badge-amber { background: rgba(251,191,36,0.15);  color: #FCD34D; border: 1px solid rgba(251,191,36,0.2); }
+
+  /* Divider */
+  .div-line { border: none; border-top: 1px solid var(--glass-border); }
+
+  /* Page sections */
+  .page { display: none; }
+  .page.active { display: block; animation: fadeIn 0.35s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+  /* Confirmation tick animation */
+  @keyframes checkDraw {
+    from { stroke-dashoffset: 100; }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes circlePop {
+    0%   { transform: scale(0.6); opacity: 0; }
+    70%  { transform: scale(1.1); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .confirm-circle { animation: circlePop 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  .confirm-check  {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: checkDraw 0.5s ease 0.4s forwards;
+  }
+  .confirm-row { opacity: 0; }
+  .confirm-row:nth-child(1) { animation: slideUp 0.4s ease 0.6s forwards; }
+  .confirm-row:nth-child(2) { animation: slideUp 0.4s ease 0.75s forwards; }
+  .confirm-row:nth-child(3) { animation: slideUp 0.4s ease 0.9s forwards; }
+  .confirm-row:nth-child(4) { animation: slideUp 0.4s ease 1.05s forwards; }
+  .confirm-row:nth-child(5) { animation: slideUp 0.4s ease 1.2s forwards; }
+  .confirm-row:nth-child(6) { animation: slideUp 0.4s ease 1.35s forwards; }
+  .confirm-btn   { opacity: 0; animation: slideUp 0.4s ease 1.5s forwards; }
+  .confirm-total { opacity: 0; animation: slideUp 0.4s ease 1.55s forwards; }
+
+  /* Range slider accent */
+  input[type=range]::-webkit-slider-thumb { background: var(--accent); }
+  input[type=range]::-moz-range-thumb { background: var(--accent); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(110,231,183,0.2); border-radius: 2px; }
+
+  /* Hero glow text */
+  .text-glow { text-shadow: 0 0 40px rgba(52,211,153,0.4); }
+
+  /* Stat pill */
+  .stat-pill {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 999px;
+    padding: 6px 18px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Ambient blobs -->
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between relative z-10">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="showPage('home')">
+      <div class="w-8 h-8 rounded-lg btn-accent flex items-center justify-center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+      </div>
+      <span style="font-family:'Syne',sans-serif; font-weight:800; font-size:18px; letter-spacing:-0.02em;">DriveX</span>
+    </div>
+    <div class="hidden md:flex items-center gap-8">
+      <a onclick="showPage('home')" class="text-sm text-slate-400 hover:text-emerald-400 cursor-pointer transition-colors">Fleet</a>
+      <a onclick="showPage('howit')" class="text-sm text-slate-400 hover:text-emerald-400 cursor-pointer transition-colors">How it works</a>
+    </div>
+    <div class="flex items-center gap-3" id="nav-auth">
+      <button onclick="showPage('login')" class="btn-ghost text-sm px-4 py-2 rounded-lg font-medium">Login</button>
+      <button onclick="showPage('register')" class="btn-accent text-sm px-4 py-2 rounded-lg">Register</button>
+    </div>
+    <div class="hidden items-center gap-3" id="nav-user">
+      <span class="text-sm text-slate-400">Hello, <span id="nav-username" class="text-emerald-400 font-medium"></span></span>
+      <button onclick="logout()" class="btn-ghost text-sm px-4 py-2 rounded-lg">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════ HOME PAGE -->
+<div id="page-home" class="page active relative z-10">
+
+  <!-- Hero -->
+  <section class="max-w-7xl mx-auto px-6 pt-24 pb-16">
+    <div class="max-w-3xl">
+      <div class="stat-pill inline-flex items-center gap-2 mb-6">
+        <div class="w-2 h-2 rounded-full bg-emerald-400"></div>
+        <span class="text-xs text-emerald-400 font-medium">5 cars available now</span>
+      </div>
+      <h1 class="text-glow" style="font-family:'Syne',sans-serif; font-size:clamp(42px,6vw,80px); font-weight:800; line-height:1.05; letter-spacing:-0.03em;">
+        Drive your<br/>
+        <span style="color:#34D399;">next chapter</span>
+      </h1>
+      <p class="text-slate-400 mt-6 text-lg leading-relaxed max-w-lg">
+        Premium cars, zero hassle. Pick a date, pick your car, get on the road.
+      </p>
+
+      <!-- Search bar -->
+      <div class="glass rounded-2xl p-4 mt-10 flex flex-col md:flex-row gap-3">
+        <div class="flex-1">
+          <label class="text-xs text-slate-500 mb-1 block">Pickup date</label>
+          <input type="date" id="hero-start" class="inp w-full rounded-xl px-3 py-2 text-sm"/>
+        </div>
+        <div class="flex-1">
+          <label class="text-xs text-slate-500 mb-1 block">Return date</label>
+          <input type="date" id="hero-end" class="inp w-full rounded-xl px-3 py-2 text-sm"/>
+        </div>
+        <div class="flex items-end">
+          <button onclick="heroSearch()" class="btn-accent px-8 py-2.5 rounded-xl w-full md:w-auto whitespace-nowrap">Search cars</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="flex flex-wrap gap-6 mt-10">
+        <div class="stat-pill text-sm text-slate-400"><span class="text-white font-semibold mr-1">50+</span> Happy customers</div>
+        <div class="stat-pill text-sm text-slate-400"><span class="text-white font-semibold mr-1">5</span> Car categories</div>
+        <div class="stat-pill text-sm text-slate-400"><span class="text-emerald-400 font-semibold mr-1">Rs.1200</span> starting/day</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fleet Grid -->
+  <section class="max-w-7xl mx-auto px-6 pb-24">
+    <div class="flex items-center justify-between mb-8">
+      <h2 style="font-size:22px; font-weight:700;">Available fleet</h2>
+      <div class="flex gap-2" id="filter-btns">
+        <button onclick="filterCars('ALL')"      class="filter-btn badge badge-green active-filter">All</button>
+        <button onclick="filterCars('ECONOMY')"  class="filter-btn badge badge-blue">Economy</button>
+        <button onclick="filterCars('SUV')"      class="filter-btn badge badge-amber">SUV</button>
+        <button onclick="filterCars('LUXURY')"   class="filter-btn badge" style="background:rgba(168,85,247,0.15);color:#C084FC;border:1px solid rgba(168,85,247,0.2)">Luxury</button>
+        <button onclick="filterCars('VAN')"      class="filter-btn badge" style="background:rgba(251,113,133,0.15);color:#FB7185;border:1px solid rgba(251,113,133,0.2)">Van</button>
+      </div>
+    </div>
+    <div id="car-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+  </section>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ HOW IT WORKS -->
+<div id="page-howit" class="page relative z-10">
+  <section class="max-w-4xl mx-auto px-6 pt-20 pb-24">
+    <h2 class="text-3xl font-bold mb-2" style="font-family:'Syne',sans-serif;">How it works</h2>
+    <p class="text-slate-400 mb-12">From registration to road — in three steps.</p>
+    <div class="grid md:grid-cols-3 gap-6">
+      <div class="glass rounded-2xl p-6">
+        <div class="w-12 h-12 rounded-xl mb-4 flex items-center justify-center text-xl font-bold" style="background:rgba(52,211,153,0.1);color:#34D399;font-family:'Syne',sans-serif;">01</div>
+        <h3 class="font-semibold text-white mb-2">Register & login</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Create your account with your name, email and driving license. Takes 30 seconds.</p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="w-12 h-12 rounded-xl mb-4 flex items-center justify-center text-xl font-bold" style="background:rgba(99,102,241,0.1);color:#818CF8;font-family:'Syne',sans-serif;">02</div>
+        <h3 class="font-semibold text-white mb-2">Pick your car</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Browse the fleet, choose your dates and get an instant price quote before you commit.</p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <div class="w-12 h-12 rounded-xl mb-4 flex items-center justify-center text-xl font-bold" style="background:rgba(251,191,36,0.1);color:#FCD34D;font-family:'Syne',sans-serif;">03</div>
+        <h3 class="font-semibold text-white mb-2">Hit the road</h3>
+        <p class="text-sm text-slate-400 leading-relaxed">Your booking is confirmed instantly. Return the car when done — we handle the rest.</p>
+      </div>
+    </div>
+    <div class="mt-10 text-center">
+      <button onclick="showPage('register')" class="btn-accent px-10 py-3 rounded-xl text-sm">Get started</button>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ LOGIN PAGE -->
+<div id="page-login" class="page relative z-10">
+  <div class="min-h-screen flex items-center justify-center px-4 py-20">
+    <div class="glass rounded-2xl p-8 w-full max-w-md">
+      <h2 class="text-2xl font-bold mb-1" style="font-family:'Syne',sans-serif;">Welcome back</h2>
+      <p class="text-slate-400 text-sm mb-8">Login to your DriveX account</p>
+      <div id="login-error" class="hidden mb-4 text-sm text-red-400 glass rounded-xl px-4 py-3" style="border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.05);"></div>
+      <div class="space-y-4">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Email</label>
+          <input id="l-email" type="email" placeholder="you@example.com" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Password</label>
+          <input id="l-pass" type="password" placeholder="••••••••" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+        </div>
+        <button onclick="doLogin()" class="btn-accent w-full py-3 rounded-xl mt-2">Login</button>
+        <p class="text-center text-sm text-slate-500">No account? <a onclick="showPage('register')" class="text-emerald-400 cursor-pointer hover:underline">Register</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ REGISTER PAGE -->
+<div id="page-register" class="page relative z-10">
+  <div class="min-h-screen flex items-center justify-center px-4 py-20">
+    <div class="glass rounded-2xl p-8 w-full max-w-lg">
+      <h2 class="text-2xl font-bold mb-1" style="font-family:'Syne',sans-serif;">Create account</h2>
+      <p class="text-slate-400 text-sm mb-8">Join DriveX and start exploring</p>
+      <div id="reg-error" class="hidden mb-4 text-sm text-red-400 glass rounded-xl px-4 py-3" style="border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.05);"></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">First name</label>
+          <input id="r-fn" type="text" placeholder="Arjun" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Last name</label>
+          <input id="r-ln" type="text" placeholder="Verma" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs text-slate-400 mb-1 block">Email</label>
+          <input id="r-email" type="email" placeholder="you@example.com" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs text-slate-400 mb-1 block">Password</label>
+          <input id="r-pass" type="password" placeholder="Minimum 6 characters" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Phone</label>
+          <input id="r-phone" type="text" placeholder="9876543210" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">License number</label>
+          <input id="r-lic" type="text" placeholder="DL-2019-1234567" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs text-slate-400 mb-2 block">Role</label>
+          <div class="flex gap-3">
+            <label class="flex-1 glass rounded-xl p-3 flex items-center gap-2 cursor-pointer hover:border-emerald-500 transition-colors" style="border-color:transparent;">
+              <input type="radio" name="role" value="CUSTOMER" checked class="accent-emerald-400"/>
+              <span class="text-sm">Customer</span>
+            </label>
+            <label class="flex-1 glass rounded-xl p-3 flex items-center gap-2 cursor-pointer hover:border-emerald-500 transition-colors" style="border-color:transparent;">
+              <input type="radio" name="role" value="ADMIN" class="accent-emerald-400"/>
+              <span class="text-sm">Admin</span>
+            </label>
+          </div>
+        </div>
+        <button onclick="doRegister()" class="btn-accent col-span-2 w-full py-3 rounded-xl mt-1">Create account</button>
+        <p class="col-span-2 text-center text-sm text-slate-500">Already a member? <a onclick="showPage('login')" class="text-emerald-400 cursor-pointer hover:underline">Login</a></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ BOOKING PAGE -->
+<div id="page-booking" class="page relative z-10">
+  <div class="max-w-5xl mx-auto px-6 py-16">
+    <button onclick="showPage('home')" class="flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-8 transition-colors">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M5 12l7-7M5 12l7 7"/></svg>
+      Back to fleet
+    </button>
+    <div class="grid md:grid-cols-2 gap-8">
+      <!-- Car detail card -->
+      <div>
+        <div class="glass rounded-2xl overflow-hidden">
+          <div class="relative">
+            <img id="bk-img" src="" alt="car" style="width:100%;height:240px;object-fit:cover;"/>
+            <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(8,12,16,0.9) 0%,transparent 50%);"></div>
+            <div style="position:absolute;bottom:16px;left:16px;">
+              <span id="bk-cat" class="badge badge-green mb-2 inline-block"></span>
+              <h2 id="bk-name" class="text-2xl font-bold" style="font-family:'Syne',sans-serif;"></h2>
+            </div>
+          </div>
+          <div class="p-6">
+            <div class="grid grid-cols-3 gap-4 mb-6">
+              <div class="text-center">
+                <div class="text-xs text-slate-500 mb-1">Seats</div>
+                <div class="text-white font-semibold" id="bk-seats"></div>
+              </div>
+              <div class="text-center">
+                <div class="text-xs text-slate-500 mb-1">Fuel</div>
+                <div class="text-white font-semibold" id="bk-fuel"></div>
+              </div>
+              <div class="text-center">
+                <div class="text-xs text-slate-500 mb-1">Transmission</div>
+                <div class="text-white font-semibold" id="bk-trans"></div>
+              </div>
+            </div>
+            <hr class="div-line mb-6"/>
+            <div class="flex items-baseline justify-between">
+              <span class="text-slate-400 text-sm">Daily rate</span>
+              <span id="bk-rate" class="text-2xl font-bold text-emerald-400" style="font-family:'Syne',sans-serif;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Booking form -->
+      <div class="glass rounded-2xl p-6">
+        <h3 class="text-lg font-bold mb-6" style="font-family:'Syne',sans-serif;">Booking details</h3>
+        <div id="bk-error" class="hidden mb-4 text-sm text-red-400 glass rounded-xl px-4 py-3" style="border-color:rgba(239,68,68,0.2);background:rgba(239,68,68,0.05);"></div>
+        <div class="space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs text-slate-400 mb-1 block">Start date</label>
+              <input id="bk-start" type="date" class="inp w-full rounded-xl px-3 py-3 text-sm"/>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 mb-1 block">End date</label>
+              <input id="bk-end" type="date" class="inp w-full rounded-xl px-3 py-3 text-sm"/>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 mb-1 block">Pickup location</label>
+            <input id="bk-pickup" type="text" placeholder="e.g. Mumbai Airport" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 mb-1 block">Dropoff location</label>
+            <input id="bk-dropoff" type="text" placeholder="e.g. Pune Station" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 mb-1 block">Notes <span class="text-slate-600">(optional)</span></label>
+            <input id="bk-notes" type="text" placeholder="Any special requests?" class="inp w-full rounded-xl px-4 py-3 text-sm"/>
+          </div>
+
+          <!-- Live price calculator -->
+          <div class="glass rounded-xl p-4" style="border-color:rgba(52,211,153,0.15);">
+            <div class="flex justify-between text-sm mb-2">
+              <span class="text-slate-400">Duration</span>
+              <span id="calc-days" class="text-white">— days</span>
+            </div>
+            <div class="flex justify-between text-sm mb-2">
+              <span class="text-slate-400">Rate/day</span>
+              <span id="calc-rate" class="text-white">—</span>
+            </div>
+            <hr class="div-line my-2"/>
+            <div class="flex justify-between">
+              <span class="text-slate-400 text-sm">Total</span>
+              <span id="calc-total" class="text-emerald-400 text-xl font-bold" style="font-family:'Syne',sans-serif;">—</span>
+            </div>
+          </div>
+
+          <button onclick="submitBooking()" class="btn-accent w-full py-3 rounded-xl">Confirm booking</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ CONFIRMED PAGE -->
+<div id="page-confirmed" class="page relative z-10">
+  <div class="max-w-xl mx-auto px-6 py-16">
+
+    <!-- Animated tick -->
+    <div class="flex flex-col items-center mb-10">
+      <div class="confirm-circle w-20 h-20 rounded-full flex items-center justify-center mb-4" style="background:rgba(52,211,153,0.1);border:2px solid rgba(52,211,153,0.3);">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline class="confirm-check" points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <h2 class="text-2xl font-bold text-center confirm-row" style="font-family:'Syne',sans-serif;">Booking confirmed!</h2>
+      <p class="text-slate-400 text-sm text-center mt-1 confirm-row">Your car is reserved and ready.</p>
+    </div>
+
+    <!-- Booking receipt card -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="relative">
+        <img id="conf-img" src="" alt="" style="width:100%;height:160px;object-fit:cover;"/>
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(8,12,16,1) 0%,rgba(8,12,16,0.2) 100%);"></div>
+        <div style="position:absolute;bottom:12px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:flex-end;">
+          <div>
+            <div id="conf-cat" class="badge badge-green mb-1 inline-block"></div>
+            <div id="conf-car" class="text-white font-bold text-lg" style="font-family:'Syne',sans-serif;"></div>
+          </div>
+          <div id="conf-plate" class="glass text-xs text-slate-300 px-3 py-1 rounded-lg"></div>
+        </div>
+      </div>
+
+      <div class="p-6">
+        <!-- Booking reference pill -->
+        <div class="glass rounded-xl px-4 py-3 mb-6 flex items-center justify-between confirm-row" style="border-color:rgba(52,211,153,0.2);">
+          <span class="text-xs text-slate-500">Booking reference</span>
+          <span id="conf-ref" class="text-emerald-400 font-mono text-sm font-semibold"></span>
+        </div>
+
+        <div class="space-y-3">
+          <div class="confirm-row flex justify-between text-sm">
+            <span class="text-slate-400">Customer</span>
+            <span id="conf-customer" class="text-white font-medium"></span>
+          </div>
+          <div class="confirm-row flex justify-between text-sm">
+            <span class="text-slate-400">Pickup</span>
+            <span id="conf-pickup" class="text-white text-right max-w-xs"></span>
+          </div>
+          <div class="confirm-row flex justify-between text-sm">
+            <span class="text-slate-400">Dropoff</span>
+            <span id="conf-dropoff" class="text-white text-right max-w-xs"></span>
+          </div>
+          <div class="confirm-row flex justify-between text-sm">
+            <span class="text-slate-400">Period</span>
+            <span id="conf-period" class="text-white"></span>
+          </div>
+          <div class="confirm-row flex justify-between text-sm">
+            <span class="text-slate-400">Duration</span>
+            <span id="conf-days" class="text-white"></span>
+          </div>
+          <div class="confirm-row flex justify-between text-sm">
+            <span class="text-slate-400">Rate / day</span>
+            <span id="conf-rate" class="text-white"></span>
+          </div>
+
+          <hr class="div-line confirm-row"/>
+
+          <div class="confirm-total flex justify-between items-baseline">
+            <span class="text-slate-400">Total amount</span>
+            <span id="conf-total" class="text-3xl font-bold text-emerald-400" style="font-family:'Syne',sans-serif;"></span>
+          </div>
+        </div>
+
+        <div class="mt-8 confirm-btn">
+          <button onclick="showPage('mybookings')" class="btn-accent w-full py-3 rounded-xl">View my bookings</button>
+          <button onclick="showPage('home')" class="btn-ghost w-full py-3 rounded-xl mt-3">Back to fleet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ MY BOOKINGS PAGE -->
+<div id="page-mybookings" class="page relative z-10">
+  <div class="max-w-5xl mx-auto px-6 py-16">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h2 class="text-2xl font-bold" style="font-family:'Syne',sans-serif;">My bookings</h2>
+        <p class="text-slate-400 text-sm mt-1">All your current and past reservations</p>
+      </div>
+    </div>
+    <div id="my-bookings-list"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ ADMIN PAGE -->
+<div id="page-admin" class="page relative z-10">
+  <div class="max-w-6xl mx-auto px-6 py-16">
+    <h2 class="text-2xl font-bold mb-2" style="font-family:'Syne',sans-serif;">Admin dashboard</h2>
+    <p class="text-slate-400 text-sm mb-10">Manage the fleet and all bookings</p>
+
+    <!-- Stats row -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10" id="admin-stats"></div>
+
+    <div class="grid lg:grid-cols-2 gap-8">
+      <!-- Add car -->
+      <div class="glass rounded-2xl p-6">
+        <h3 class="text-lg font-bold mb-5" style="font-family:'Syne',sans-serif;">Add car to fleet</h3>
+        <div id="add-car-msg" class="hidden mb-4 text-sm glass rounded-xl px-4 py-3"></div>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div><label class="text-xs text-slate-400 mb-1 block">Brand</label><input id="ac-brand" type="text" placeholder="Toyota" class="inp w-full rounded-xl px-3 py-2"/></div>
+          <div><label class="text-xs text-slate-400 mb-1 block">Model</label><input id="ac-model" type="text" placeholder="Camry" class="inp w-full rounded-xl px-3 py-2"/></div>
+          <div><label class="text-xs text-slate-400 mb-1 block">Year</label><input id="ac-year" type="number" placeholder="2023" class="inp w-full rounded-xl px-3 py-2"/></div>
+          <div><label class="text-xs text-slate-400 mb-1 block">License plate</label><input id="ac-plate" type="text" placeholder="MH12AB1234" class="inp w-full rounded-xl px-3 py-2"/></div>
+          <div><label class="text-xs text-slate-400 mb-1 block">Color</label><input id="ac-color" type="text" placeholder="White" class="inp w-full rounded-xl px-3 py-2"/></div>
+          <div><label class="text-xs text-slate-400 mb-1 block">Seats</label><input id="ac-seats" type="number" placeholder="5" class="inp w-full rounded-xl px-3 py-2"/></div>
+          <div><label class="text-xs text-slate-400 mb-1 block">Fuel type</label>
+            <select id="ac-fuel" class="inp w-full rounded-xl px-3 py-2">
+              <option value="PETROL">Petrol</option>
+              <option value="DIESEL">Diesel</option>
+              <option value="ELECTRIC">Electric</option>
+              <option value="HYBRID">Hybrid</option>
+              <option value="CNG">CNG</option>
+            </select>
+          </div>
+          <div><label class="text-xs text-slate-400 mb-1 block">Transmission</label>
+            <select id="ac-trans" class="inp w-full rounded-xl px-3 py-2">
+              <option value="MANUAL">Manual</option>
+              <option value="AUTOMATIC">Automatic</option>
+            </select>
+          </div>
+          <div><label class="text-xs text-slate-400 mb-1 block">Daily rate (Rs.)</label><input id="ac-rate" type="number" placeholder="2500" class="inp w-full rounded-xl px-3 py-2"/></div>
+          <div><label class="text-xs text-slate-400 mb-1 block">Category</label>
+            <select id="ac-cat" class="inp w-full rounded-xl px-3 py-2">
+              <option value="ECONOMY">Economy</option>
+              <option value="SUV">SUV</option>
+              <option value="LUXURY">Luxury</option>
+              <option value="VAN">Van</option>
+            </select>
+          </div>
+          <div class="col-span-2"><label class="text-xs text-slate-400 mb-1 block">Description</label><input id="ac-desc" type="text" placeholder="Brief description of the car" class="inp w-full rounded-xl px-3 py-2"/></div>
+          <button onclick="adminAddCar()" class="btn-accent col-span-2 py-2.5 rounded-xl">Add car</button>
+        </div>
+      </div>
+
+      <!-- All bookings -->
+      <div class="glass rounded-2xl p-6">
+        <h3 class="text-lg font-bold mb-5" style="font-family:'Syne',sans-serif;">All bookings</h3>
+        <div id="admin-bookings-list" class="space-y-3 max-h-[520px] overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CAR_IMAGES = {
+  ECONOMY: 'https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=600&q=80',
+  SUV:     'https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=600&q=80',
+  LUXURY:  'https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600&q=80',
+  VAN:     'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&q=80',
+  DEFAULT: 'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=600&q=80'
+};
+
+let state = {
+  users: [],
+  cars: [],
+  bookings: [],
+  currentUser: null,
+  selectedCar: null,
+  lastBooking: null,
+  nextUserId: 1,
+  nextCarId: 1,
+  nextBookingId: 1
+};
+
+// ── Seed fleet ────────────────────────────────────────────────────────────────
+function seedFleet() {
+  state.cars = [
+    { id: state.nextCarId++, brand:'Maruti', model:'Swift',    year:2022, licensePlate:'MH12AB1234', color:'White',  seats:5, fuel:'PETROL',   trans:'MANUAL',    rate:1200, category:'ECONOMY', desc:'Fuel-efficient compact hatchback, perfect for city drives.', status:'AVAILABLE' },
+    { id: state.nextCarId++, brand:'Hyundai',model:'Creta',    year:2023, licensePlate:'DL01CD5678', color:'Silver', seats:5, fuel:'DIESEL',   trans:'AUTOMATIC', rate:2500, category:'SUV',     desc:'Best-selling family SUV with premium features.', status:'AVAILABLE' },
+    { id: state.nextCarId++, brand:'Toyota', model:'Camry',    year:2023, licensePlate:'KA03EF9012', color:'Black',  seats:5, fuel:'HYBRID',   trans:'AUTOMATIC', rate:4000, category:'LUXURY',  desc:'Executive hybrid sedan with refined performance.', status:'AVAILABLE' },
+    { id: state.nextCarId++, brand:'Tata',   model:'Nexon EV', year:2024, licensePlate:'MH14GH3456', color:'Blue',   seats:5, fuel:'ELECTRIC', trans:'AUTOMATIC', rate:2800, category:'SUV',     desc:'All-electric SUV — zero emissions, full power.', status:'AVAILABLE' },
+    { id: state.nextCarId++, brand:'Maruti', model:'Ertiga',   year:2022, licensePlate:'UP16IJ7890', color:'Grey',   seats:7, fuel:'CNG',      trans:'MANUAL',    rate:1800, category:'VAN',     desc:'7-seater family van, ideal for group trips.', status:'AVAILABLE' }
+  ];
+}
+seedFleet();
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById('page-' + name);
+  if (el) { el.classList.add('active'); window.scrollTo(0,0); }
+  if (name === 'home')        renderCarGrid();
+  if (name === 'mybookings')  renderMyBookings();
+  if (name === 'admin')       renderAdmin();
+  if (name === 'confirmed')   animateConfirm();
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function doRegister() {
+  const fn = v('r-fn'), ln = v('r-ln'), email = v('r-email'),
+        pass = v('r-pass'), phone = v('r-phone'), lic = v('r-lic');
+  const role = document.querySelector('input[name="role"]:checked')?.value || 'CUSTOMER';
+  const err = document.getElementById('reg-error');
+
+  if (!fn || !ln || !email || !pass || !phone || !lic) return showErr(err, 'Please fill in all fields.');
+  if (!email.includes('@')) return showErr(err, 'Enter a valid email address.');
+  if (pass.length < 6)      return showErr(err, 'Password must be at least 6 characters.');
+  if (state.users.find(u => u.email === email)) return showErr(err, 'Email already registered.');
+
+  const user = { id: state.nextUserId++, firstName: fn, lastName: ln, email, password: pass, phone, licenseNumber: lic, role };
+  state.users.push(user);
+  loginUser(user);
+  err.classList.add('hidden');
+}
+
+function doLogin() {
+  const email = v('l-email'), pass = v('l-pass');
+  const err = document.getElementById('login-error');
+  if (!email || !pass) return showErr(err, 'Please enter email and password.');
+  const user = state.users.find(u => u.email === email && u.password === pass);
+  if (!user) return showErr(err, 'Incorrect email or password.');
+  loginUser(user);
+  err.classList.add('hidden');
+}
+
+function loginUser(user) {
+  state.currentUser = user;
+  document.getElementById('nav-auth').classList.add('hidden');
+  document.getElementById('nav-user').classList.remove('hidden');
+  document.getElementById('nav-user').style.display = 'flex';
+  document.getElementById('nav-username').textContent = user.firstName;
+  showPage(user.role === 'ADMIN' ? 'admin' : 'home');
+}
+
+function logout() {
+  state.currentUser = null;
+  document.getElementById('nav-auth').classList.remove('hidden');
+  document.getElementById('nav-user').classList.add('hidden');
+  showPage('home');
+}
+
+// ── Car Grid ──────────────────────────────────────────────────────────────────
+let activeFilter = 'ALL';
+
+function renderCarGrid(cars) {
+  const list = cars || (activeFilter === 'ALL' ? state.cars : state.cars.filter(c => c.category === activeFilter));
+  const grid = document.getElementById('car-grid');
+  if (!list.length) { grid.innerHTML = '<p class="text-slate-500 col-span-3 py-8">No cars match your search.</p>'; return; }
+  grid.innerHTML = list.map(car => {
+    const img = CAR_IMAGES[car.category] || CAR_IMAGES.DEFAULT;
+    const avail = car.status === 'AVAILABLE';
+    return `
+    <div class="glass car-card rounded-2xl" onclick="${avail ? 'openBooking(' + car.id + ')' : ''}">
+      <div style="position:relative;overflow:hidden;">
+        <img src="${img}" alt="${car.brand} ${car.model}" loading="lazy"/>
+        <div style="position:absolute;top:12px;left:12px;z-index:2;">${avail
+          ? '<span class="badge badge-green">Available</span>'
+          : '<span class="badge" style="background:rgba(239,68,68,0.15);color:#F87171;border:1px solid rgba(239,68,68,0.2);">Rented</span>'
+        }</div>
+      </div>
+      <div style="position:relative;z-index:2;padding:16px;">
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <h3 class="text-white font-bold text-base" style="font-family:'Syne',sans-serif;">${car.brand} ${car.model}</h3>
+            <p class="text-slate-500 text-xs mt-0.5">${car.year} · ${car.color} · ${car.fuel}</p>
+          </div>
+          <div class="text-right">
+            <div class="text-emerald-400 font-bold text-base" style="font-family:'Syne',sans-serif;">Rs.${car.rate.toLocaleString()}</div>
+            <div class="text-slate-600 text-xs">/day</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 mt-3">
+          <span class="text-xs text-slate-500">${car.seats} seats</span>
+          <span class="text-slate-700">·</span>
+          <span class="text-xs text-slate-500">${car.trans}</span>
+          <span class="text-slate-700">·</span>
+          <span class="text-xs text-slate-500">${car.licensePlate}</span>
+        </div>
+        ${avail ? `<button class="btn-accent w-full py-2 rounded-xl text-xs mt-4" onclick="event.stopPropagation();openBooking(${car.id})">Book now</button>` : '<div class="mt-4 text-center text-xs text-slate-600 py-2">Currently unavailable</div>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterCars(cat) {
+  activeFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.style.opacity = '0.4');
+  event.target.style.opacity = '1';
+  renderCarGrid();
+}
+
+function heroSearch() {
+  const s = document.getElementById('hero-start').value;
+  const e = document.getElementById('hero-end').value;
+  if (!s || !e) { renderCarGrid(); return; }
+  const start = new Date(s), end = new Date(e);
+  if (end <= start) { alert('End date must be after start date.'); return; }
+  const avail = state.cars.filter(car => {
+    if (car.status !== 'AVAILABLE') return false;
+    return !state.bookings.some(b =>
+      b.carId === car.id && b.status === 'ACTIVE' &&
+      new Date(b.startDate) < end && new Date(b.endDate) > start
+    );
+  });
+  renderCarGrid(avail);
+}
+
+// ── Booking ───────────────────────────────────────────────────────────────────
+function openBooking(carId) {
+  if (!state.currentUser) { showPage('login'); return; }
+  const car = state.cars.find(c => c.id === carId);
+  if (!car) return;
+  state.selectedCar = car;
+
+  const img = CAR_IMAGES[car.category] || CAR_IMAGES.DEFAULT;
+  document.getElementById('bk-img').src   = img;
+  document.getElementById('bk-name').textContent = car.brand + ' ' + car.model;
+  document.getElementById('bk-cat').textContent  = car.category;
+  document.getElementById('bk-seats').textContent = car.seats;
+  document.getElementById('bk-fuel').textContent  = car.fuel;
+  document.getElementById('bk-trans').textContent = car.trans;
+  document.getElementById('bk-rate').textContent  = 'Rs. ' + car.rate.toLocaleString() + ' / day';
+  document.getElementById('calc-rate').textContent = 'Rs. ' + car.rate.toLocaleString();
+
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('bk-start').min = today;
+  document.getElementById('bk-end').min   = today;
+
+  // Pre-fill if hero dates were set
+  const hs = document.getElementById('hero-start').value;
+  const he = document.getElementById('hero-end').value;
+  if (hs) document.getElementById('bk-start').value = hs;
+  if (he) document.getElementById('bk-end').value   = he;
+  updateCalc();
+
+  document.getElementById('bk-start').oninput = updateCalc;
+  document.getElementById('bk-end').oninput   = updateCalc;
+
+  showPage('booking');
+}
+
+function updateCalc() {
+  const s = document.getElementById('bk-start').value;
+  const e = document.getElementById('bk-end').value;
+  const dEl = document.getElementById('calc-days');
+  const tEl = document.getElementById('calc-total');
+  if (!s || !e || !state.selectedCar) { dEl.textContent = '— days'; tEl.textContent = '—'; return; }
+  const days = Math.round((new Date(e) - new Date(s)) / 86400000);
+  if (days <= 0) { dEl.textContent = '— days'; tEl.textContent = '—'; return; }
+  dEl.textContent = days + ' day' + (days > 1 ? 's' : '');
+  tEl.textContent = 'Rs. ' + (days * state.selectedCar.rate).toLocaleString();
+}
+
+function submitBooking() {
+  const start = v('bk-start'), end = v('bk-end');
+  const pickup = v('bk-pickup'), dropoff = v('bk-dropoff');
+  const notes = v('bk-notes');
+  const err = document.getElementById('bk-error');
+  const car = state.selectedCar;
+
+  if (!start || !end)         return showErr(err, 'Please select start and end dates.');
+  if (!pickup || !dropoff)    return showErr(err, 'Please enter pickup and dropoff locations.');
+  const s = new Date(start), e = new Date(end);
+  if (e <= s) return showErr(err, 'End date must be after start date.');
+  if (s < new Date(new Date().toDateString())) return showErr(err, 'Start date cannot be in the past.');
+
+  const conflict = state.bookings.some(b =>
+    b.carId === car.id && b.status === 'ACTIVE' &&
+    new Date(b.startDate) < e && new Date(b.endDate) > s
+  );
+  if (conflict) return showErr(err, 'This car is already booked for those dates.');
+
+  const days = Math.round((e - s) / 86400000);
+  const total = days * car.rate;
+  const ref = 'BK-' + Date.now() + '-' + state.nextBookingId;
+
+  const booking = {
+    id: state.nextBookingId++,
+    bookingReference: ref,
+    customerId: state.currentUser.id,
+    customerName: state.currentUser.firstName + ' ' + state.currentUser.lastName,
+    carId: car.id,
+    carName: car.brand + ' ' + car.model,
+    carPlate: car.licensePlate,
+    carCategory: car.category,
+    carRate: car.rate,
+    startDate: start, endDate: end,
+    days, total, notes,
+    pickupLocation: pickup, dropoffLocation: dropoff,
+    status: 'ACTIVE'
+  };
+
+  state.bookings.push(booking);
+  car.status = 'RENTED';
+  state.lastBooking = booking;
+
+  err.classList.add('hidden');
+  populateConfirmPage(booking, car);
+  showPage('confirmed');
+}
+
+function populateConfirmPage(b, car) {
+  const img = CAR_IMAGES[car.category] || CAR_IMAGES.DEFAULT;
+  document.getElementById('conf-img').src          = img;
+  document.getElementById('conf-car').textContent  = b.carName;
+  document.getElementById('conf-cat').textContent  = b.carCategory;
+  document.getElementById('conf-plate').textContent = b.carPlate;
+  document.getElementById('conf-ref').textContent  = b.bookingReference;
+  document.getElementById('conf-customer').textContent = b.customerName;
+  document.getElementById('conf-pickup').textContent   = b.pickupLocation;
+  document.getElementById('conf-dropoff').textContent  = b.dropoffLocation;
+  document.getElementById('conf-period').textContent   = fmtDate(b.startDate) + ' — ' + fmtDate(b.endDate);
+  document.getElementById('conf-days').textContent     = b.days + ' day' + (b.days > 1 ? 's' : '');
+  document.getElementById('conf-rate').textContent     = 'Rs. ' + b.carRate.toLocaleString() + ' / day';
+  document.getElementById('conf-total').textContent    = 'Rs. ' + b.total.toLocaleString();
+}
+
+function animateConfirm() {
+  // Re-trigger animations by cloning the confirmed page children
+  document.querySelectorAll('.confirm-circle,.confirm-check,.confirm-row,.confirm-btn,.confirm-total')
+    .forEach(el => { el.style.animationName = 'none'; requestAnimationFrame(() => { el.style.animationName = ''; }); });
+}
+
+// ── My Bookings ───────────────────────────────────────────────────────────────
+function renderMyBookings() {
+  const list = document.getElementById('my-bookings-list');
+  if (!state.currentUser) { list.innerHTML = '<p class="text-slate-500">Please login first.</p>'; return; }
+  const myB = state.bookings.filter(b => b.customerId === state.currentUser.id);
+  if (!myB.length) { list.innerHTML = '<div class="glass rounded-2xl p-8 text-center text-slate-500"><p>No bookings yet.</p><button onclick="showPage(\'home\')" class="btn-accent mt-4 px-6 py-2 rounded-xl text-sm">Browse fleet</button></div>'; return; }
+  list.innerHTML = myB.map(b => {
+    const img = CAR_IMAGES[b.carCategory] || CAR_IMAGES.DEFAULT;
+    const statusColor = b.status === 'ACTIVE' ? '#34D399' : b.status === 'DONE' ? '#94A3B8' : '#F87171';
+    return `
+    <div class="glass rounded-2xl overflow-hidden mb-4">
+      <div class="flex flex-col md:flex-row">
+        <img src="${img}" style="width:100%;max-height:130px;object-fit:cover;" class="md:w-48 md:max-h-none"/>
+        <div class="p-5 flex-1">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <h3 class="font-bold text-white" style="font-family:'Syne',sans-serif;">${b.carName}</h3>
+              <p class="text-xs text-slate-500 mt-0.5 font-mono">${b.bookingReference}</p>
+            </div>
+            <span class="badge" style="background:${statusColor}20;color:${statusColor};border:1px solid ${statusColor}40;">${b.status}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs text-slate-400">
+            <div><span class="text-slate-600">Period:</span> ${fmtDate(b.startDate)} → ${fmtDate(b.endDate)}</div>
+            <div><span class="text-slate-600">Duration:</span> ${b.days} days</div>
+            <div><span class="text-slate-600">Pickup:</span> ${b.pickupLocation}</div>
+            <div><span class="text-slate-600">Total:</span> <span class="text-emerald-400 font-semibold">Rs. ${b.total.toLocaleString()}</span></div>
+          </div>
+          ${b.status === 'ACTIVE' ? `<button onclick="cancelBooking(${b.id})" class="btn-ghost text-xs px-4 py-1.5 rounded-lg mt-3" style="color:#F87171;border-color:rgba(248,113,113,0.2);">Cancel booking</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cancelBooking(id) {
+  if (!confirm('Cancel this booking?')) return;
+  const b = state.bookings.find(x => x.id === id);
+  if (!b) return;
+  b.status = 'CANCELLED';
+  const car = state.cars.find(c => c.id === b.carId);
+  if (car) car.status = 'AVAILABLE';
+  renderMyBookings();
+}
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+function renderAdmin() {
+  const avail = state.cars.filter(c => c.status === 'AVAILABLE').length;
+  const active = state.bookings.filter(b => b.status === 'ACTIVE').length;
+  document.getElementById('admin-stats').innerHTML = [
+    { label: 'Total cars', value: state.cars.length, color: '#818CF8' },
+    { label: 'Available', value: avail, color: '#34D399' },
+    { label: 'Active bookings', value: active, color: '#FCD34D' },
+    { label: 'Total bookings', value: state.bookings.length, color: '#94A3B8' }
+  ].map(s => `
+    <div class="glass rounded-2xl p-5">
+      <div class="text-xs text-slate-500 mb-1">${s.label}</div>
+      <div style="font-family:'Syne',sans-serif;font-size:28px;font-weight:700;color:${s.color};">${s.value}</div>
+    </div>`).join('');
+
+  const bl = document.getElementById('admin-bookings-list');
+  if (!state.bookings.length) { bl.innerHTML = '<p class="text-slate-500 text-sm">No bookings yet.</p>'; return; }
+  bl.innerHTML = state.bookings.map(b => {
+    const statusColor = b.status === 'ACTIVE' ? '#34D399' : b.status === 'DONE' ? '#94A3B8' : '#F87171';
+    return `
+    <div class="glass rounded-xl p-4">
+      <div class="flex items-start justify-between mb-2">
+        <div>
+          <p class="text-white text-sm font-medium">${b.carName}</p>
+          <p class="text-slate-500 text-xs mt-0.5">${b.customerName} · ${b.bookingReference.slice(0,18)}…</p>
+        </div>
+        <span class="badge" style="background:${statusColor}20;color:${statusColor};border:1px solid ${statusColor}40;">${b.status}</span>
+      </div>
+      <p class="text-xs text-slate-500 mb-3">${fmtDate(b.startDate)} → ${fmtDate(b.endDate)} · <span class="text-emerald-400">Rs. ${b.total.toLocaleString()}</span></p>
+      ${b.status === 'ACTIVE' ? `
+        <div class="flex gap-2">
+          <button onclick="adminMarkDone(${b.id})" class="btn-accent text-xs px-3 py-1.5 rounded-lg flex-1">Mark done</button>
+          <button onclick="adminCancel(${b.id})" class="btn-ghost text-xs px-3 py-1.5 rounded-lg" style="color:#F87171;border-color:rgba(248,113,113,0.2);">Cancel</button>
+        </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function adminMarkDone(id) {
+  const b = state.bookings.find(x => x.id === id);
+  if (!b) return;
+  b.status = 'DONE';
+  const car = state.cars.find(c => c.id === b.carId);
+  if (car) car.status = 'AVAILABLE';
+  renderAdmin();
+}
+
+function adminCancel(id) {
+  const b = state.bookings.find(x => x.id === id);
+  if (!b) return;
+  b.status = 'CANCELLED';
+  const car = state.cars.find(c => c.id === b.carId);
+  if (car) car.status = 'AVAILABLE';
+  renderAdmin();
+}
+
+function adminAddCar() {
+  const brand = v('ac-brand'), model = v('ac-model'), year = parseInt(v('ac-year'));
+  const plate = v('ac-plate'), color = v('ac-color'), seats = parseInt(v('ac-seats'));
+  const fuel  = document.getElementById('ac-fuel').value;
+  const trans = document.getElementById('ac-trans').value;
+  const rate  = parseFloat(v('ac-rate'));
+  const cat   = document.getElementById('ac-cat').value;
+  const desc  = v('ac-desc');
+  const msg   = document.getElementById('add-car-msg');
+
+  if (!brand || !model || !plate || !color || !year || !seats || !rate)
+    return showMsg(msg, 'Fill in all fields.', false);
+  if (state.cars.find(c => c.licensePlate.toUpperCase() === plate.toUpperCase()))
+    return showMsg(msg, 'License plate already exists.', false);
+
+  state.cars.push({ id: state.nextCarId++, brand, model, year, licensePlate: plate.toUpperCase(), color, seats, fuel, trans, rate, category: cat, desc, status: 'AVAILABLE' });
+  showMsg(msg, brand + ' ' + model + ' added to fleet!', true);
+  ['ac-brand','ac-model','ac-year','ac-plate','ac-color','ac-seats','ac-rate','ac-desc'].forEach(id => document.getElementById(id).value = '');
+  renderAdmin();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const v = id => document.getElementById(id)?.value?.trim() || '';
+const fmtDate = d => { const dt = new Date(d); return dt.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }); };
+
+function showErr(el, msg) { el.textContent = msg; el.classList.remove('hidden'); }
+function showMsg(el, msg, ok) {
+  el.textContent = msg;
+  el.style.color = ok ? '#34D399' : '#F87171';
+  el.style.background = ok ? 'rgba(52,211,153,0.05)' : 'rgba(239,68,68,0.05)';
+  el.style.borderColor = ok ? 'rgba(52,211,153,0.2)' : 'rgba(239,68,68,0.2)';
+  el.classList.remove('hidden');
+}
+
+// Init
+renderCarGrid();
+</script>
+</body>
+</html>
