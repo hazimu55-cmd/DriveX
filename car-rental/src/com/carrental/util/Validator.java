@@ -60,4 +60,23 @@ public final class Validator {
             throw new ValidationException("Car year must be between 1990 and " + (currentYear + 1));
         }
     }
+
+    // Validation methods that return boolean for immediate UI feedback
+    public static boolean isValidEmail(String email) {
+        if (email == null || email.isBlank()) return false;
+        return email.matches("^[\\w._%+\\-]+@[\\w.\\-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    public static boolean isValidPhone(String phone) {
+        if (phone == null || phone.isBlank()) return false;
+        return phone.matches("^[+]?[0-9]{10,15}$");
+    }
+
+    public static boolean isValidPassword(String password) {
+        return password != null && password.length() >= 6;
+    }
+
+    public static boolean isNonBlank(String value) {
+        return value != null && !value.isBlank();
+    }
 }

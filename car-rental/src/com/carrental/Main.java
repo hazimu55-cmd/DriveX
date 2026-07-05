@@ -5,6 +5,7 @@ import com.carrental.enums.CarStatus;
 import com.carrental.enums.FuelType;
 import com.carrental.models.*;
 import com.carrental.service.*;
+import com.carrental.util.Validator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -98,12 +99,61 @@ public class Main {
         System.out.println("REGISTER");
         line();
         try {
-            System.out.print("First name     : "); String fn  = input();
-            System.out.print("Last name      : "); String ln  = input();
-            System.out.print("Email          : "); String em  = input();
-            System.out.print("Password       : "); String pw  = input();
-            System.out.print("Phone          : "); String ph  = input();
-            System.out.print("License number : "); String lic = input();
+            String fn, ln, em, pw, ph, lic;
+
+            // First name
+            do {
+                System.out.print("First name     : ");
+                fn = input();
+                if (!Validator.isNonBlank(fn)) {
+                    System.out.println("Error: First name cannot be blank");
+                }
+            } while (!Validator.isNonBlank(fn));
+
+            // Last name
+            do {
+                System.out.print("Last name      : ");
+                ln = input();
+                if (!Validator.isNonBlank(ln)) {
+                    System.out.println("Error: Last name cannot be blank");
+                }
+            } while (!Validator.isNonBlank(ln));
+
+            // Email
+            do {
+                System.out.print("Email          : ");
+                em = input();
+                if (!Validator.isValidEmail(em)) {
+                    System.out.println("Error: Invalid email format: " + em);
+                }
+            } while (!Validator.isValidEmail(em));
+
+            // Password
+            do {
+                System.out.print("Password       : ");
+                pw = input();
+                if (!Validator.isValidPassword(pw)) {
+                    System.out.println("Error: Password must be at least 6 characters");
+                }
+            } while (!Validator.isValidPassword(pw));
+
+            // Phone
+            do {
+                System.out.print("Phone          : ");
+                ph = input();
+                if (!Validator.isValidPhone(ph)) {
+                    System.out.println("Error: Invalid phone number: " + ph);
+                }
+            } while (!Validator.isValidPhone(ph));
+
+            // License number
+            do {
+                System.out.print("License number : ");
+                lic = input();
+                if (!Validator.isNonBlank(lic)) {
+                    System.out.println("Error: License number cannot be blank");
+                }
+            } while (!Validator.isNonBlank(lic));
 
             System.out.println("Register as: 1) Customer  2) Admin");
             System.out.print("Choice: ");
